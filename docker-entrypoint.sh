@@ -174,24 +174,32 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 		fi
 
 		echo
-		
-		for f in /docker-entrypoint-initdb.d/*; do
-			case "$f" in
-				*.sh)     echo "$0: running $f"; . "$f" ;;
-				*.sql)    
-					  Dbname=`grep "CREATE DATABASE" $f |awk -F[" ;"] '{print $6}'`
-					  mysql -u root -p'$MYSQL_ROOT_PASSWORD' -e 'show databases;'|awk -F[" "] '{print $1}'|grep $Dbname >& /dev/null
-					  if [[ $? -eq 0 ]]; then
-					  	echo "The DATABASE $f HAS BEEN CREATED!"
-					  else
-						echo "$0: running $f"; "${mysql[@]}" < "$f"; echo 
-					  fi
-					  ;;
-				*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
-				*)        echo "$0: ignoring $f" ;;
-			esac
-			echo
-		done
+	#	for f in /docker-entrypoint-initdb.d/*; do
+	#		case "$f" in
+	#			*.sh)     echo "$0: running $f"; . "$f" ;;
+	#			*.sql)    echo "$0: running $f"; "${mysql[@]}" < "$f"; echo ;;
+	#			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
+	#			*)        echo "$0: ignoring $f" ;;
+	#		esac
+	#		echo
+	#	done
+                for f in /docker-entrypoint-initdb.d/*; do
+                        case "$f" in
+                                *.sh)     echo "$0: running $f"; . "$f" ;;
+                                *.sql)
+                                          Dbname=`grep "CREATE DATABASE" $f |awk -F[" ;"] '{print $6}'`
+                                          mysql -u root -p$MYSQL_ROOT_PASSWORD -e 'show databases;'|awk -F[" "] '{print $1}'|grep $Dbname >& /dev/null
+                                          if [[ $? -eq 0 ]]; then
+                                                echo "The DATABASE $f HAS BEEN CREATED!"
+                                          else
+                                                echo "$0: running $f"; "${mysql[@]}" < "$f"; echo
+                                          fi
+                                          ;;
+                                *.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
+                                *)        echo "$0: ignoring $f" ;;
+                        esac
+                        echo
+                done
 
 		if [ ! -z "$MYSQL_ONETIME_PASSWORD" ]; then
 			"${mysql[@]}" <<-EOSQL
