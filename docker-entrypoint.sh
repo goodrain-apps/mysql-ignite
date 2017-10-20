@@ -79,9 +79,9 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 
 	if [ ! -d "$DATADIR/mysql" ]; then
 		file_env 'MYSQL_ROOT_PASSWORD'
-		if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" -a -z "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
+		if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_DATABASE_INPUT" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" -a -z "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
 			echo >&2 'error: database is uninitialized and password option is not specified '
-			echo >&2 '  You need to specify one of MYSQL_ROOT_PASSWORD, MYSQL_ALLOW_EMPTY_PASSWORD and MYSQL_RANDOM_ROOT_PASSWORD'
+			echo >&2 '  You need to specify one of MYSQL_ROOT_PASSWORD, MYSQL_DATABASE_INPUT, MYSQL_ALLOW_EMPTY_PASSWORD and MYSQL_RANDOM_ROOT_PASSWORD'
 			exit 1
 		fi
 
@@ -174,32 +174,34 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 		fi
 
 		echo
-	#	for f in /docker-entrypoint-initdb.d/*; do
-	#		case "$f" in
-	#			*.sh)     echo "$0: running $f"; . "$f" ;;
-	#			*.sql)    echo "$0: running $f"; "${mysql[@]}" < "$f"; echo ;;
-	#			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
-	#			*)        echo "$0: ignoring $f" ;;
-	#		esac
-	#		echo
-	#	done
-                for f in /docker-entrypoint-initdb.d/*; do
-                        case "$f" in
-                                *.sh)     echo "$0: running $f"; . "$f" ;;
-                                *.sql)
-                                          Dbname=`grep "CREATE DATABASE" $f |awk -F[" ;"] '{print $6}'`
-                                          mysql -u root -p$MYSQL_ROOT_PASSWORD -e 'show databases;'|awk -F[" "] '{print $1}'|grep $Dbname >& /dev/null
-                                          if [[ $? -eq 0 ]]; then
-                                                echo "The DATABASE $f HAS BEEN CREATED!"
-                                          else
-                                                echo "$0: running $f"; "${mysql[@]}" < "$f"; echo
-                                          fi
-                                          ;;
-                                *.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
-                                *)        echo "$0: ignoring $f" ;;
-                        esac
-                        echo
-                done
+		if [ "$MYSQL_DATABASE_INPUT" ]; then
+		for f in /docker-entrypoint-initdb.d/*; do
+			case "$f" in
+				*.sh)     echo "$0: running $f"; . "$f" ;;
+				*.sql)    echo "$0: running $f"; "${mysql[@]}" < "$f"; echo ;;
+				*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
+				*)        echo "$0: ignoring $f" ;;
+			esac
+			echo
+		done
+		fi
+               # for f in /docker-entrypoint-initdb.d/*; do
+               #         case "$f" in
+               #                 *.sh)     echo "$0: running $f"; . "$f" ;;
+               #                 *.sql)
+               #                           Dbname=`grep "CREATE DATABASE" $f |awk -F[" ;"] '{print $6}'`
+               #                           mysql -u root -p$MYSQL_ROOT_PASSWORD -e 'show databases;'|awk -F[" "] '{print $1}'|grep $Dbname >& /dev/null
+               #                           if [[ $? -eq 0 ]]; then
+               #                                 echo "The DATABASE $f HAS BEEN CREATED!"
+               #                           else
+               #                                 echo "$0: running $f"; "${mysql[@]}" < "$f"; echo
+               #                           fi
+               #                           ;;
+               #                 *.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
+               #                 *)        echo "$0: ignoring $f" ;;
+               #         esac
+               #         echo
+               # done
 
 		if [ ! -z "$MYSQL_ONETIME_PASSWORD" ]; then
 			"${mysql[@]}" <<-EOSQL
